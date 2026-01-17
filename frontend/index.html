@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Create and vote on polls">
+  <title>Vote System</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header with Navigation -->
+  <header class="header">
+    <div class="container header-content">
+      <a href="/" class="logo">Vote System</a>
+      <nav class="nav">
+        <button id="nav-home" class="nav-link active">Polls</button>
+        <div id="auth-nav" class="auth-nav">
+          <!-- Shown when logged out -->
+          <button id="btn-show-login" class="btn btn-secondary">Login</button>
+          <button id="btn-show-register" class="btn btn-primary">Register</button>
+        </div>
+        <div id="user-nav" class="user-nav hidden">
+          <!-- Shown when logged in -->
+          <button id="btn-create-poll" class="btn btn-primary">Create Poll</button>
+          <span id="user-email" class="user-email"></span>
+          <button id="btn-logout" class="btn btn-secondary">Logout</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="container">
+      <!-- Poll Dashboard Section -->
+      <section id="poll-dashboard" class="section">
+        <div class="section-header">
+          <h1>Polls</h1>
+          <p class="section-subtitle">Browse and vote on community polls</p>
+        </div>
+
+        <!-- Loading State -->
+        <div id="polls-loading" class="loading">
+          <div class="spinner"></div>
+          <p>Loading polls...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="polls-empty" class="empty-state hidden">
+          <p>No polls yet. Be the first to create one!</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="polls-error" class="error-state hidden">
+          <p>Failed to load polls. Please try again.</p>
+          <button id="btn-retry-polls" class="btn btn-secondary">Retry</button>
+        </div>
+
+        <!-- Poll List -->
+        <div id="poll-list" class="poll-list hidden"></div>
+      </section>
+
+      <!-- Single Poll View Section -->
+      <section id="poll-view" class="section hidden">
+        <button id="btn-back-to-polls" class="btn btn-text">&larr; Back to Polls</button>
+
+        <div id="poll-view-loading" class="loading">
+          <div class="spinner"></div>
+          <p>Loading poll...</p>
+        </div>
+
+        <div id="poll-view-content" class="poll-detail hidden"></div>
+
+        <div id="poll-view-error" class="error-state hidden">
+          <p>Failed to load poll. Please try again.</p>
+          <button id="btn-retry-poll" class="btn btn-secondary">Retry</button>
+        </div>
+      </section>
+
+      <!-- Login Form Section -->
+      <section id="login-section" class="section auth-section hidden">
+        <div class="auth-card">
+          <h2>Login</h2>
+          <form id="login-form" class="form">
+            <div class="form-group">
+              <label for="login-email">Email</label>
+              <input type="email" id="login-email" name="email" required autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label for="login-password">Password</label>
+              <input type="password" id="login-password" name="password" required autocomplete="current-password">
+            </div>
+            <div id="login-error" class="form-error hidden"></div>
+            <button type="submit" class="btn btn-primary btn-block">
+              <span class="btn-text">Login</span>
+              <span class="btn-loading hidden">
+                <span class="spinner-small"></span> Logging in...
+              </span>
+            </button>
+          </form>
+          <p class="auth-switch">
+            Don't have an account?
+            <button id="btn-switch-to-register" class="btn btn-link">Register</button>
+          </p>
+        </div>
+      </section>
+
+      <!-- Register Form Section -->
+      <section id="register-section" class="section auth-section hidden">
+        <div class="auth-card">
+          <h2>Create Account</h2>
+          <form id="register-form" class="form">
+            <div class="form-group">
+              <label for="register-email">Email</label>
+              <input type="email" id="register-email" name="email" required autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label for="register-password">Password</label>
+              <input type="password" id="register-password" name="password" required minlength="8" autocomplete="new-password">
+              <small class="form-hint">At least 8 characters</small>
+            </div>
+            <div class="form-group">
+              <label for="register-confirm">Confirm Password</label>
+              <input type="password" id="register-confirm" name="confirm" required autocomplete="new-password">
+            </div>
+            <div id="register-error" class="form-error hidden"></div>
+            <button type="submit" class="btn btn-primary btn-block">
+              <span class="btn-text">Create Account</span>
+              <span class="btn-loading hidden">
+                <span class="spinner-small"></span> Creating...
+              </span>
+            </button>
+          </form>
+          <p class="auth-switch">
+            Already have an account?
+            <button id="btn-switch-to-login" class="btn btn-link">Login</button>
+          </p>
+        </div>
+      </section>
+
+      <!-- Create Poll Form Section -->
+      <section id="create-poll-section" class="section hidden">
+        <div class="form-card">
+          <h2>Create a New Poll</h2>
+          <form id="create-poll-form" class="form">
+            <div class="form-group">
+              <label for="poll-title">Question / Title</label>
+              <input type="text" id="poll-title" name="title" required maxlength="200" placeholder="What do you want to ask?">
+            </div>
+            <div class="form-group">
+              <label for="poll-description">Description (optional)</label>
+              <textarea id="poll-description" name="description" rows="3" maxlength="500" placeholder="Add more context to your poll..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Options</label>
+              <div id="poll-options" class="poll-options">
+                <div class="option-input">
+                  <input type="text" name="options[]" required maxlength="100" placeholder="Option 1">
+                </div>
+                <div class="option-input">
+                  <input type="text" name="options[]" required maxlength="100" placeholder="Option 2">
+                </div>
+              </div>
+              <button type="button" id="btn-add-option" class="btn btn-secondary btn-small">+ Add Option</button>
+            </div>
+            <div id="create-poll-error" class="form-error hidden"></div>
+            <div class="form-actions">
+              <button type="button" id="btn-cancel-create" class="btn btn-secondary">Cancel</button>
+              <button type="submit" class="btn btn-primary">
+                <span class="btn-text">Create Poll</span>
+                <span class="btn-loading hidden">
+                  <span class="spinner-small"></span> Creating...
+                </span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>Vote System &copy; 2024</p>
+    </div>
+  </footer>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="app.js" type="module"></script>
+</body>
+</html>

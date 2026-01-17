@@ -51,3 +51,29 @@ export interface ApiError {
 export interface ApiSuccess<T> {
   data: T;
 }
+
+// Auth types
+export interface RegisterInput {
+  email: string;
+  password: string;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  user: {
+    id: string;
+    email: string;
+  };
+  token: string;
+}
+
+export interface JwtPayload {
+  sub: string;
+  email: string;
+  iat: number;
+  exp: number;
+}

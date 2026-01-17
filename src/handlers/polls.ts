@@ -20,7 +20,8 @@ export async function handleGetPollById(
 
 export async function handleCreatePoll(
   db: D1Database,
-  request: Request
+  request: Request,
+  userId: string
 ): Promise<Response> {
   let body: CreatePollInput;
 
@@ -59,9 +60,6 @@ export async function handleCreatePoll(
     return errorResponse('Title cannot be empty');
   }
 
-  // For Phase 2, we use a placeholder user ID since auth isn't implemented yet
-  const tempUserId = 'anonymous';
-
-  const poll = await createPoll(db, title, description, options, tempUserId);
+  const poll = await createPoll(db, title, description, options, userId);
   return jsonResponse({ data: poll }, 201);
 }
