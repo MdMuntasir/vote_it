@@ -1,0 +1,22 @@
+{
+  "name": "vote-system",
+  "version": "1.0.0",
+  "description": "A voting system built with Cloudflare Workers and D1",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create vote-db",
+    "db:migrate:local": "wrangler d1 execute vote-db --local --file=./schema.sql",
+    "db:migrate:remote": "wrangler d1 execute vote-db --remote --file=./schema.sql",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["cloudflare", "workers", "d1", "voting"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260117.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.59.2"
+  }
+}
