@@ -8,7 +8,9 @@
 // =============================================================================
 
 const CONFIG = {
-  API_BASE_URL: 'http://localhost:8787/api',
+  // API URL: Uses environment variable in production, falls back to localhost for dev
+  // For Cloudflare Pages, set this via Pages environment variables
+  API_BASE_URL: window.ENV?.API_URL || 'http://localhost:8787/api',
   STORAGE_KEYS: {
     USER: 'vote_system_user',
     VOTED_POLLS: 'vote_system_voted_polls',
@@ -16,9 +18,9 @@ const CONFIG = {
   },
   // Firebase configuration - Replace with your actual Firebase config
   FIREBASE: {
-    apiKey: 'YOUR_API_KEY',
-    authDomain: 'your-project.firebaseapp.com',
-    projectId: 'your-project-id',
+    apiKey: window.ENV?.FIREBASE_API_KEY || 'YOUR_API_KEY',
+    authDomain: window.ENV?.FIREBASE_AUTH_DOMAIN || 'your-project.firebaseapp.com',
+    projectId: window.ENV?.FIREBASE_PROJECT_ID || 'your-project-id',
   },
 };
 

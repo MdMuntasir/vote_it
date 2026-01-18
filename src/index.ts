@@ -5,9 +5,13 @@ import { handleVote } from './handlers/votes';
 import { handleGoogleAuth } from './handlers/auth';
 import { authenticate } from './middleware/auth';
 
+// Export the Durable Object class
+export { VoteEngine } from './durable-objects/VoteEngine';
+
 export interface Env {
   DB: D1Database;
   FIREBASE_PROJECT_ID: string;
+  VOTE_ENGINE: DurableObjectNamespace;
 }
 
 // Define routes
@@ -65,19 +69,19 @@ export default {
         if (!authResult.authenticated) {
           return authResult.response;
         }
-        return await handleCreatePoll(env.DB, request, authResult.user.id);
+        return await handleCreatePoll(env, request, authResult.user.id);
       }
 
       // POST /api/polls/:id/vote - Submit a vote (public, but tracked)
       match = matchRoute(routes.vote, method, path);
       if (match) {
-        return await handleVote(env.DB, request, match.params.id);
+        return await handleVote(env, request, match.params.id);
       }
 
       // GET /api/polls/:id - Get single poll with options (public)
       match = matchRoute(routes.getPollById, method, path);
       if (match) {
-        return await handleGetPollById(env.DB, match.params.id);
+        return await handleGetPollById(env, match.params.id);
       }
 
       // 404 for unmatched API routes
