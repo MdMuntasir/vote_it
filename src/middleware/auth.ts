@@ -1,19 +1,34 @@
-import { verifyToken } from '../utils/jwt';
+import { verifyFirebaseToken } from '../utils/firebase';
 import { errorResponse } from '../utils/response';
-import type { JwtPayload } from '../types';
 
 export interface AuthenticatedUser {
   id: string;
   email: string;
+  googleUid: string;
+  displayName: string | null;
+  photoUrl: string | null;
 }
 
 export type AuthResult =
   | { authenticated: true; user: AuthenticatedUser }
   | { authenticated: false; response: Response };
 
+interface UserRow {
+  id: string;
+  email: string;
+  google_uid: string;
+  display_name: string | null;
+  photo_url: string | null;
+}
+
+/**
+ * Authenticate a request using Firebase ID token
+ * Expects Authorization header with "Bearer <firebase-id-token>"
+ */
 export async function authenticate(
   request: Request,
-  jwtSecret: string
+  db: D1Database,
+  projectId: string
 ): Promise<AuthResult> {
   const authHeader = request.headers.get('Authorization');
 
@@ -32,7 +47,7 @@ export async function authenticate(
   }
 
   const token = authHeader.slice(7);
-  const payload = await verifyToken(token, jwtSecret);
+  const payload = await verifyFirebaseToken(token, projectId);
 
   if (!payload) {
     return {
@@ -41,11 +56,27 @@ export async function authenticate(
     };
   }
 
+  // Look up user by google_uid
+  const user = await db
+    .prepare('SELECT * FROM users WHERE google_uid = ?')
+    .bind(payload.sub)
+    .first<UserRow>();
+
+  if (!user) {
+    return {
+      authenticated: false,
+      response: errorResponse('User not found. Please sign in first.', 401),
+    };
+  }
+
   return {
     authenticated: true,
     user: {
-      id: payload.sub,
-      email: payload.email,
+      id: user.id,
+      email: user.email,
+      googleUid: user.google_uid,
+      displayName: user.display_name,
+      photoUrl: user.photo_url,
     },
   };
 }

@@ -1,11 +1,14 @@
 -- Vote System Database Schema
 
--- Users table
+-- Users table (Firebase Google OAuth)
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  created_at INTEGER NOT NULL
+  google_uid TEXT UNIQUE NOT NULL,
+  display_name TEXT,
+  photo_url TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
 );
 
 -- Polls table
@@ -44,6 +47,7 @@ CREATE TABLE IF NOT EXISTS votes (
 );
 
 -- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_users_google_uid ON users(google_uid);
 CREATE INDEX IF NOT EXISTS idx_polls_user_id ON polls(user_id);
 CREATE INDEX IF NOT EXISTS idx_polls_total_votes ON polls(total_votes DESC);
 CREATE INDEX IF NOT EXISTS idx_options_poll_id ON options(poll_id);

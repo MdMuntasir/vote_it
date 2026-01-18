@@ -1,127 +1,139 @@
 import { jsonResponse, errorResponse } from '../utils/response';
-import { hashPassword, verifyPassword } from '../utils/password';
-import { createToken } from '../utils/jwt';
+import { verifyFirebaseToken } from '../utils/firebase';
 import { generateId, now } from '../utils/db';
-import type { RegisterInput, LoginInput, UserRow } from '../types';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MIN_PASSWORD_LENGTH = 8;
-
-export async function handleRegister(
-  db: D1Database,
-  request: Request,
-  jwtSecret: string
-): Promise<Response> {
-  let body: RegisterInput;
-
-  try {
-    body = (await request.json()) as RegisterInput;
-  } catch {
-    return errorResponse('Invalid JSON body');
-  }
-
-  // Validate email
-  if (!body.email || typeof body.email !== 'string') {
-    return errorResponse('Email is required');
-  }
-
-  const email = body.email.trim().toLowerCase();
-  if (!EMAIL_REGEX.test(email)) {
-    return errorResponse('Invalid email format');
-  }
-
-  // Validate password
-  if (!body.password || typeof body.password !== 'string') {
-    return errorResponse('Password is required');
-  }
-
-  if (body.password.length < MIN_PASSWORD_LENGTH) {
-    return errorResponse(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-  }
-
-  // Check if email already exists
-  const existingUser = await db
-    .prepare('SELECT id FROM users WHERE email = ?')
-    .bind(email)
-    .first();
-
-  if (existingUser) {
-    return errorResponse('Email already registered', 409);
-  }
-
-  // Create user
-  const userId = generateId();
-  const passwordHash = await hashPassword(body.password);
-  const timestamp = now();
-
-  await db
-    .prepare(
-      'INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)'
-    )
-    .bind(userId, email, passwordHash, timestamp)
-    .run();
-
-  // Generate JWT token
-  const token = await createToken(userId, email, jwtSecret);
-
-  return jsonResponse(
-    {
-      data: {
-        user: { id: userId, email },
-        token,
-      },
-    },
-    201
-  );
+interface GoogleAuthInput {
+  idToken: string;
 }
 
-export async function handleLogin(
+interface UserRow {
+  id: string;
+  email: string;
+  google_uid: string;
+  display_name: string | null;
+  photo_url: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+/**
+ * Handle Google OAuth authentication
+ * POST /api/auth/google
+ *
+ * 1. Receive Firebase ID token from request body
+ * 2. Verify token using Firebase verification
+ * 3. Check if user exists by google_uid
+ * 4. If not, create new user
+ * 5. Return user data
+ */
+export async function handleGoogleAuth(
   db: D1Database,
   request: Request,
-  jwtSecret: string
+  projectId: string
 ): Promise<Response> {
-  let body: LoginInput;
+  let body: GoogleAuthInput;
 
   try {
-    body = (await request.json()) as LoginInput;
+    body = (await request.json()) as GoogleAuthInput;
   } catch {
     return errorResponse('Invalid JSON body');
   }
 
-  // Validate inputs
-  if (!body.email || typeof body.email !== 'string') {
-    return errorResponse('Email is required');
+  // Validate idToken is provided
+  if (!body.idToken || typeof body.idToken !== 'string') {
+    return errorResponse('idToken is required');
   }
 
-  if (!body.password || typeof body.password !== 'string') {
-    return errorResponse('Password is required');
+  // Verify the Firebase ID token
+  const payload = await verifyFirebaseToken(body.idToken, projectId);
+
+  if (!payload) {
+    return errorResponse('Invalid or expired token', 401);
   }
 
-  const email = body.email.trim().toLowerCase();
+  const googleUid = payload.sub;
+  const email = payload.email || '';
+  const displayName = payload.name || null;
+  const photoUrl = payload.picture || null;
 
-  // Find user
-  const user = await db
+  // Check if user already exists by google_uid
+  let user = await db
+    .prepare('SELECT * FROM users WHERE google_uid = ?')
+    .bind(googleUid)
+    .first<UserRow>();
+
+  const timestamp = now();
+
+  if (user) {
+    // User exists - update their profile info (in case it changed in Google)
+    await db
+      .prepare(
+        'UPDATE users SET email = ?, display_name = ?, photo_url = ?, updated_at = ? WHERE id = ?'
+      )
+      .bind(email, displayName, photoUrl, timestamp, user.id)
+      .run();
+
+    // Return updated user data
+    return jsonResponse({
+      data: {
+        user: {
+          id: user.id,
+          email,
+          displayName,
+          photoUrl,
+        },
+      },
+    });
+  }
+
+  // Check if user exists by email (for migration from old accounts)
+  const existingByEmail = await db
     .prepare('SELECT * FROM users WHERE email = ?')
     .bind(email)
     .first<UserRow>();
 
-  if (!user) {
-    return errorResponse('Invalid email or password', 401);
+  if (existingByEmail) {
+    // Link Google account to existing email account
+    await db
+      .prepare(
+        'UPDATE users SET google_uid = ?, display_name = ?, photo_url = ?, updated_at = ? WHERE id = ?'
+      )
+      .bind(googleUid, displayName, photoUrl, timestamp, existingByEmail.id)
+      .run();
+
+    return jsonResponse({
+      data: {
+        user: {
+          id: existingByEmail.id,
+          email,
+          displayName,
+          photoUrl,
+        },
+      },
+    });
   }
 
-  // Verify password
-  const isValid = await verifyPassword(body.password, user.password_hash);
-  if (!isValid) {
-    return errorResponse('Invalid email or password', 401);
-  }
+  // Create new user
+  const userId = generateId();
 
-  // Generate JWT token
-  const token = await createToken(user.id, user.email, jwtSecret);
+  await db
+    .prepare(
+      'INSERT INTO users (id, email, google_uid, display_name, photo_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    )
+    .bind(userId, email, googleUid, displayName, photoUrl, timestamp, timestamp)
+    .run();
 
-  return jsonResponse({
-    data: {
-      user: { id: user.id, email: user.email },
-      token,
+  return jsonResponse(
+    {
+      data: {
+        user: {
+          id: userId,
+          email,
+          displayName,
+          photoUrl,
+        },
+      },
     },
-  });
+    201
+  );
 }

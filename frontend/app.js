@@ -1,6 +1,6 @@
 /**
  * Vote System - Frontend Application
- * Module structure for API integration
+ * Firebase Google OAuth Integration
  */
 
 // =============================================================================
@@ -8,12 +8,17 @@
 // =============================================================================
 
 const CONFIG = {
-  API_BASE_URL: '/api',
+  API_BASE_URL: 'http://localhost:8787/api',
   STORAGE_KEYS: {
-    TOKEN: 'vote_system_token',
     USER: 'vote_system_user',
     VOTED_POLLS: 'vote_system_voted_polls',
     FINGERPRINT: 'vote_system_fingerprint',
+  },
+  // Firebase configuration - Replace with your actual Firebase config
+  FIREBASE: {
+    apiKey: 'YOUR_API_KEY',
+    authDomain: 'your-project.firebaseapp.com',
+    projectId: 'your-project-id',
   },
 };
 
@@ -23,10 +28,121 @@ const CONFIG = {
 
 const state = {
   user: null,
-  token: null,
+  firebaseUser: null,
   polls: [],
   currentPoll: null,
   currentSection: 'poll-dashboard',
+  authInitialized: false,
+};
+
+// =============================================================================
+// Firebase Module
+// =============================================================================
+
+const firebaseAuth = {
+  /**
+   * Initialize Firebase
+   */
+  init() {
+    firebase.initializeApp(CONFIG.FIREBASE);
+
+    // Listen for auth state changes
+    firebase.auth().onAuthStateChanged(async (firebaseUser) => {
+      state.authInitialized = true;
+
+      if (firebaseUser) {
+        state.firebaseUser = firebaseUser;
+        await this.syncWithBackend(firebaseUser);
+      } else {
+        state.firebaseUser = null;
+        state.user = null;
+        storage.remove(CONFIG.STORAGE_KEYS.USER);
+      }
+
+      ui.updateNav();
+    });
+  },
+
+  /**
+   * Sign in with Google popup
+   */
+  async signInWithGoogle() {
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await firebase.auth().signInWithPopup(provider);
+      // onAuthStateChanged will handle the rest
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      if (error.code === 'auth/popup-closed-by-user') {
+        toast.warning('Sign-in cancelled');
+      } else {
+        toast.error(error.message || 'Failed to sign in with Google');
+      }
+    }
+  },
+
+  /**
+   * Sign out
+   */
+  async signOut() {
+    try {
+      await firebase.auth().signOut();
+      toast.success('You have been logged out');
+    } catch (error) {
+      console.error('Sign-out error:', error);
+      toast.error('Failed to sign out');
+    }
+  },
+
+  /**
+   * Get fresh ID token for API requests
+   * @returns {Promise<string|null>}
+   */
+  async getIdToken() {
+    if (!state.firebaseUser) {
+      return null;
+    }
+    try {
+      return await state.firebaseUser.getIdToken(true);
+    } catch (error) {
+      console.error('Failed to get ID token:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Sync Firebase user with backend
+   * @param {firebase.User} firebaseUser
+   */
+  async syncWithBackend(firebaseUser) {
+    try {
+      const idToken = await firebaseUser.getIdToken();
+
+      const response = await fetch(`${CONFIG.API_BASE_URL}/auth/google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to sync with backend');
+      }
+
+      state.user = data.data.user;
+      storage.set(CONFIG.STORAGE_KEYS.USER, state.user);
+
+      toast.success(`Welcome, ${state.user.displayName || state.user.email}!`);
+    } catch (error) {
+      console.error('Backend sync error:', error);
+      toast.error('Failed to complete sign-in');
+      // Sign out from Firebase if backend sync fails
+      await firebase.auth().signOut();
+    }
+  },
 };
 
 // =============================================================================
@@ -47,9 +163,12 @@ const api = {
       ...options.headers,
     };
 
-    // Add auth token if available
-    if (state.token) {
-      headers['Authorization'] = `Bearer ${state.token}`;
+    // Add Firebase ID token if user is authenticated
+    if (state.firebaseUser) {
+      const idToken = await firebaseAuth.getIdToken();
+      if (idToken) {
+        headers['Authorization'] = `Bearer ${idToken}`;
+      }
     }
 
     const response = await fetch(url, {
@@ -90,23 +209,6 @@ const api = {
       });
     },
   },
-
-  // Auth endpoints
-  auth: {
-    async register(email, password) {
-      return api.request('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      });
-    },
-
-    async login(email, password) {
-      return api.request('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      });
-    },
-  },
 };
 
 // =============================================================================
@@ -137,28 +239,6 @@ const storage = {
     } catch {
       console.error('Failed to remove from localStorage');
     }
-  },
-
-  // Auth-specific helpers
-  getToken() {
-    return this.get(CONFIG.STORAGE_KEYS.TOKEN);
-  },
-
-  setToken(token) {
-    this.set(CONFIG.STORAGE_KEYS.TOKEN, token);
-  },
-
-  getUser() {
-    return this.get(CONFIG.STORAGE_KEYS.USER);
-  },
-
-  setUser(user) {
-    this.set(CONFIG.STORAGE_KEYS.USER, user);
-  },
-
-  clearAuth() {
-    this.remove(CONFIG.STORAGE_KEYS.TOKEN);
-    this.remove(CONFIG.STORAGE_KEYS.USER);
   },
 
   // Voted polls helpers
@@ -220,8 +300,6 @@ const ui = {
     const sections = [
       'poll-dashboard',
       'poll-view',
-      'login-section',
-      'register-section',
       'create-poll-section',
     ];
 
@@ -241,16 +319,26 @@ const ui = {
   updateNav() {
     const authNav = this.$('auth-nav');
     const userNav = this.$('user-nav');
-    const userEmail = this.$('user-email');
+    const userPhoto = this.$('user-photo');
+    const userName = this.$('user-name');
 
-    if (state.user) {
+    if (state.user && state.firebaseUser) {
       authNav.classList.add('hidden');
       userNav.classList.remove('hidden');
-      userEmail.textContent = state.user.email;
+
+      // Set user photo
+      if (state.user.photoUrl || state.firebaseUser.photoURL) {
+        userPhoto.src = state.user.photoUrl || state.firebaseUser.photoURL;
+        userPhoto.classList.remove('hidden');
+      } else {
+        userPhoto.classList.add('hidden');
+      }
+
+      // Set user name
+      userName.textContent = state.user.displayName || state.user.email || 'User';
     } else {
       authNav.classList.remove('hidden');
       userNav.classList.add('hidden');
-      userEmail.textContent = '';
     }
   },
 
@@ -814,109 +902,6 @@ const polls = {
 };
 
 // =============================================================================
-// Auth Module
-// =============================================================================
-
-const auth = {
-  /**
-   * Initialize auth state from storage
-   */
-  init() {
-    state.token = storage.getToken();
-    state.user = storage.getUser();
-    ui.updateNav();
-  },
-
-  /**
-   * Handle login form submission
-   * @param {Event} event - Form submit event
-   */
-  async handleLogin(event) {
-    event.preventDefault();
-    const form = event.target;
-
-    ui.hideFormError('login');
-    ui.setFormLoading(form, true);
-
-    const email = form.email.value.trim();
-    const password = form.password.value;
-
-    try {
-      const response = await api.auth.login(email, password);
-
-      state.token = response.data.token;
-      state.user = response.data.user;
-
-      storage.setToken(state.token);
-      storage.setUser(state.user);
-
-      ui.updateNav();
-      ui.showSection('poll-dashboard');
-      toast.success('Welcome back!');
-      form.reset();
-    } catch (error) {
-      ui.showFormError('login', error.message || 'Login failed');
-    } finally {
-      ui.setFormLoading(form, false);
-    }
-  },
-
-  /**
-   * Handle register form submission
-   * @param {Event} event - Form submit event
-   */
-  async handleRegister(event) {
-    event.preventDefault();
-    const form = event.target;
-
-    ui.hideFormError('register');
-
-    const email = form.email.value.trim();
-    const password = form.password.value;
-    const confirm = form.confirm.value;
-
-    // Validate passwords match
-    if (password !== confirm) {
-      ui.showFormError('register', 'Passwords do not match');
-      return;
-    }
-
-    ui.setFormLoading(form, true);
-
-    try {
-      const response = await api.auth.register(email, password);
-
-      state.token = response.data.token;
-      state.user = response.data.user;
-
-      storage.setToken(state.token);
-      storage.setUser(state.user);
-
-      ui.updateNav();
-      ui.showSection('poll-dashboard');
-      toast.success('Account created successfully!');
-      form.reset();
-    } catch (error) {
-      ui.showFormError('register', error.message || 'Registration failed');
-    } finally {
-      ui.setFormLoading(form, false);
-    }
-  },
-
-  /**
-   * Handle logout
-   */
-  logout() {
-    state.token = null;
-    state.user = null;
-    storage.clearAuth();
-    ui.updateNav();
-    ui.showSection('poll-dashboard');
-    toast.success('You have been logged out');
-  },
-};
-
-// =============================================================================
 // Create Poll Module
 // =============================================================================
 
@@ -1071,18 +1056,20 @@ function setupEventHandlers() {
     polls.loadPolls();
   });
 
-  // Auth navigation
-  ui.$('btn-show-login').addEventListener('click', () => ui.showSection('login-section'));
-  ui.$('btn-show-register').addEventListener('click', () => ui.showSection('register-section'));
-  ui.$('btn-switch-to-register').addEventListener('click', () => ui.showSection('register-section'));
-  ui.$('btn-switch-to-login').addEventListener('click', () => ui.showSection('login-section'));
-  ui.$('btn-logout').addEventListener('click', () => auth.logout());
+  // Google Sign-in
+  ui.$('btn-google-signin').addEventListener('click', () => {
+    firebaseAuth.signInWithGoogle();
+  });
+
+  // Logout
+  ui.$('btn-logout').addEventListener('click', () => {
+    firebaseAuth.signOut();
+  });
 
   // Create poll
   ui.$('btn-create-poll').addEventListener('click', () => {
     if (!state.user) {
-      toast.warning('Please login to create a poll');
-      ui.showSection('login-section');
+      toast.warning('Please sign in to create a poll');
       return;
     }
     ui.showSection('create-poll-section');
@@ -1103,8 +1090,6 @@ function setupEventHandlers() {
   });
 
   // Forms
-  ui.$('login-form').addEventListener('submit', (e) => auth.handleLogin(e));
-  ui.$('register-form').addEventListener('submit', (e) => auth.handleRegister(e));
   ui.$('create-poll-form').addEventListener('submit', (e) => createPoll.handleSubmit(e));
   ui.$('btn-cancel-create').addEventListener('click', () => createPoll.cancel());
 }
@@ -1118,7 +1103,7 @@ async function init() {
 
   // Initialize modules
   toast.init();
-  auth.init();
+  firebaseAuth.init();
   createPoll.init();
 
   // Setup event handlers

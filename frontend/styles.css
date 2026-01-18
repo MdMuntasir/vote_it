@@ -117,6 +117,61 @@ body {
   padding: 0 0.5rem;
 }
 
+/* User Profile */
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-photo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-border);
+}
+
+.user-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Google Sign-in Button */
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1.25rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-google:hover {
+  background: var(--color-background);
+  border-color: var(--color-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-google:active {
+  transform: scale(0.98);
+}
+
+.google-icon {
+  flex-shrink: 0;
+}
+
 /* Main */
 .main {
   flex: 1;
@@ -755,6 +810,10 @@ body {
   }
 
   .user-email {
+    display: none;
+  }
+
+  .user-name {
     display: none;
   }
 

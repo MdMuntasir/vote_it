@@ -3,7 +3,8 @@ main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
 [vars]
-JWT_SECRET = "dev-secret-change-in-production"
+# Replace with your actual Firebase project ID
+FIREBASE_PROJECT_ID = "your-firebase-project-id"
 
 [[d1_databases]]
 binding = "DB"
