@@ -12,6 +12,8 @@ const CONFIG = {
   STORAGE_KEYS: {
     TOKEN: 'vote_system_token',
     USER: 'vote_system_user',
+    VOTED_POLLS: 'vote_system_voted_polls',
+    FINGERPRINT: 'vote_system_fingerprint',
   },
 };
 
@@ -157,6 +159,36 @@ const storage = {
   clearAuth() {
     this.remove(CONFIG.STORAGE_KEYS.TOKEN);
     this.remove(CONFIG.STORAGE_KEYS.USER);
+  },
+
+  // Voted polls helpers
+  getVotedPolls() {
+    return this.get(CONFIG.STORAGE_KEYS.VOTED_POLLS) || {};
+  },
+
+  setVotedPoll(pollId, optionId) {
+    const votedPolls = this.getVotedPolls();
+    votedPolls[pollId] = optionId;
+    this.set(CONFIG.STORAGE_KEYS.VOTED_POLLS, votedPolls);
+  },
+
+  hasVotedOnPoll(pollId) {
+    const votedPolls = this.getVotedPolls();
+    return pollId in votedPolls;
+  },
+
+  getVotedOptionId(pollId) {
+    const votedPolls = this.getVotedPolls();
+    return votedPolls[pollId] || null;
+  },
+
+  // Fingerprint helpers
+  getFingerprint() {
+    return this.get(CONFIG.STORAGE_KEYS.FINGERPRINT);
+  },
+
+  setFingerprint(fingerprint) {
+    this.set(CONFIG.STORAGE_KEYS.FINGERPRINT, fingerprint);
   },
 };
 
@@ -483,43 +515,65 @@ const polls = {
   renderPollDetail(poll) {
     const container = ui.$('poll-view-content');
     const totalVotes = poll.total_votes || 0;
+    const hasVoted = storage.hasVotedOnPoll(poll.id);
+    const votedOptionId = storage.getVotedOptionId(poll.id);
 
     container.innerHTML = `
       <h1 class="poll-detail-title">${this.escapeHtml(poll.title)}</h1>
       ${poll.description ? `<p class="poll-detail-description">${this.escapeHtml(poll.description)}</p>` : ''}
 
       <div class="poll-options-list">
-        ${poll.options.map((option) => this.createOptionElement(option, totalVotes)).join('')}
+        ${poll.options.map((option) => this.createOptionElement(option, totalVotes, hasVoted, votedOptionId)).join('')}
       </div>
 
       <div class="poll-detail-footer">
         <span class="poll-total-votes">${totalVotes} total votes</span>
-        <button id="btn-vote" class="btn btn-primary" disabled>
-          <span class="btn-text">Vote</span>
-          <span class="btn-loading hidden">
-            <span class="spinner-small"></span> Voting...
-          </span>
-        </button>
+        ${hasVoted
+          ? '<span class="voted-message">You have voted on this poll</span>'
+          : `<button id="btn-vote" class="btn btn-primary" disabled>
+              <span class="btn-text">Vote</span>
+              <span class="btn-loading hidden">
+                <span class="spinner-small"></span> Voting...
+              </span>
+            </button>`
+        }
       </div>
     `;
 
-    // Add option click handlers
-    this.setupOptionHandlers();
+    // Add option click handlers only if user hasn't voted
+    if (!hasVoted) {
+      this.setupOptionHandlers();
+    }
   },
 
   /**
    * Create HTML for a poll option
    * @param {object} option - Option object
    * @param {number} totalVotes - Total votes for percentage calculation
+   * @param {boolean} hasVoted - Whether user has voted on this poll
+   * @param {string} votedOptionId - The option ID the user voted for
    * @returns {string}
    */
-  createOptionElement(option, totalVotes) {
+  createOptionElement(option, totalVotes, hasVoted = false, votedOptionId = null) {
     const percentage = totalVotes > 0 ? Math.round((option.vote_count / totalVotes) * 100) : 0;
+    const isVotedOption = option.id === votedOptionId;
+    const classes = ['poll-option'];
+
+    if (hasVoted) {
+      classes.push('voted');
+      if (isVotedOption) {
+        classes.push('user-vote');
+      }
+    }
+
     return `
-      <div class="poll-option" data-option-id="${option.id}">
-        <div class="poll-option-radio"></div>
+      <div class="${classes.join(' ')}" data-option-id="${option.id}">
+        <div class="poll-option-radio">${isVotedOption ? '<span class="checkmark"></span>' : ''}</div>
         <div class="poll-option-content">
-          <div class="poll-option-text">${this.escapeHtml(option.text)}</div>
+          <div class="poll-option-text">
+            ${this.escapeHtml(option.text)}
+            ${isVotedOption ? '<span class="your-vote-badge">Your vote</span>' : ''}
+          </div>
           <div class="poll-option-bar">
             <div class="poll-option-bar-fill" style="width: ${percentage}%"></div>
           </div>
@@ -572,32 +626,150 @@ const polls = {
     btnText.classList.add('hidden');
     btnLoading.classList.remove('hidden');
 
+    // Disable all options during voting
+    const options = document.querySelectorAll('.poll-option');
+    options.forEach((opt) => opt.classList.add('disabled'));
+
     try {
-      // Generate a simple fingerprint (will be replaced with FingerprintJS in Phase 6)
       const fingerprint = await this.getFingerprint();
 
-      await api.polls.vote(pollId, optionId, fingerprint);
+      // Optimistic UI update
+      this.updateVoteCountOptimistic(optionId, 1);
+
+      const response = await api.polls.vote(pollId, optionId, fingerprint);
+
+      // Store voted state in local storage
+      storage.setVotedPoll(pollId, optionId);
+
+      // Update with actual server response for accuracy
+      this.updateVoteCountFromResponse(optionId, response.data);
+
       toast.success('Your vote has been recorded!');
 
-      // Reload poll to show updated counts
-      await this.loadPollDetail(pollId);
+      // Re-render to show voted state
+      this.renderPollDetail(state.currentPoll);
     } catch (error) {
       console.error('Failed to vote:', error);
-      toast.error(error.message || 'Failed to submit vote');
 
-      // Re-enable button
-      voteBtn.disabled = false;
-      btnText.classList.remove('hidden');
-      btnLoading.classList.add('hidden');
+      // Revert optimistic update
+      this.updateVoteCountOptimistic(optionId, -1);
+
+      // Handle specific error types
+      if (error.message && error.message.includes('already voted')) {
+        // Mark as voted locally even if server says already voted
+        storage.setVotedPoll(pollId, optionId);
+        toast.warning('You have already voted on this poll');
+        // Re-render to show voted state
+        this.renderPollDetail(state.currentPoll);
+      } else {
+        toast.error(error.message || 'Failed to submit vote');
+        // Re-enable voting UI
+        voteBtn.disabled = false;
+        btnText.classList.remove('hidden');
+        btnLoading.classList.add('hidden');
+        options.forEach((opt) => opt.classList.remove('disabled'));
+      }
     }
   },
 
   /**
-   * Generate a simple browser fingerprint
-   * This will be replaced with FingerprintJS in Phase 6
+   * Optimistically update vote count in UI
+   * @param {string} optionId - Option ID
+   * @param {number} delta - Change amount (+1 or -1)
+   */
+  updateVoteCountOptimistic(optionId, delta) {
+    if (!state.currentPoll) return;
+
+    // Update state
+    const option = state.currentPoll.options.find((o) => o.id === optionId);
+    if (option) {
+      option.vote_count += delta;
+      state.currentPoll.total_votes += delta;
+    }
+
+    // Update DOM
+    const optionEl = document.querySelector(`.poll-option[data-option-id="${optionId}"]`);
+    if (optionEl) {
+      const totalVotes = state.currentPoll.total_votes;
+      const percentage = totalVotes > 0 ? Math.round((option.vote_count / totalVotes) * 100) : 0;
+
+      const countEl = optionEl.querySelector('.poll-option-count');
+      const barEl = optionEl.querySelector('.poll-option-bar-fill');
+      const totalEl = document.querySelector('.poll-total-votes');
+
+      if (countEl) countEl.textContent = `${option.vote_count} (${percentage}%)`;
+      if (barEl) barEl.style.width = `${percentage}%`;
+      if (totalEl) totalEl.textContent = `${totalVotes} total votes`;
+
+      // Update all option percentages
+      state.currentPoll.options.forEach((opt) => {
+        const el = document.querySelector(`.poll-option[data-option-id="${opt.id}"]`);
+        if (el) {
+          const pct = totalVotes > 0 ? Math.round((opt.vote_count / totalVotes) * 100) : 0;
+          const cEl = el.querySelector('.poll-option-count');
+          const bEl = el.querySelector('.poll-option-bar-fill');
+          if (cEl) cEl.textContent = `${opt.vote_count} (${pct}%)`;
+          if (bEl) bEl.style.width = `${pct}%`;
+        }
+      });
+    }
+  },
+
+  /**
+   * Update vote counts from server response
+   * @param {string} optionId - Option ID
+   * @param {object} data - Response data with new counts
+   */
+  updateVoteCountFromResponse(optionId, data) {
+    if (!state.currentPoll || !data) return;
+
+    // Update state with server values
+    const option = state.currentPoll.options.find((o) => o.id === optionId);
+    if (option) {
+      option.vote_count = data.new_vote_count;
+      state.currentPoll.total_votes = data.new_total_votes;
+    }
+  },
+
+  /**
+   * Generate browser fingerprint using FingerprintJS
+   * Falls back to simple fingerprint if FingerprintJS is not available
    * @returns {Promise<string>}
    */
   async getFingerprint() {
+    // Check if we have a cached fingerprint
+    const cached = storage.getFingerprint();
+    if (cached) {
+      return cached;
+    }
+
+    let fingerprint;
+
+    try {
+      // Try to use FingerprintJS if available
+      if (typeof FingerprintJS !== 'undefined') {
+        const fp = await FingerprintJS.load();
+        const result = await fp.get();
+        fingerprint = result.visitorId;
+      } else {
+        // Fallback to simple fingerprint
+        fingerprint = await this.generateSimpleFingerprint();
+      }
+    } catch (error) {
+      console.warn('FingerprintJS failed, using fallback:', error);
+      fingerprint = await this.generateSimpleFingerprint();
+    }
+
+    // Cache the fingerprint
+    storage.setFingerprint(fingerprint);
+    return fingerprint;
+  },
+
+  /**
+   * Generate a simple fallback fingerprint
+   * @returns {Promise<string>}
+   */
+  async generateSimpleFingerprint() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     ctx.textBaseline = 'top';
@@ -608,8 +780,11 @@ const polls = {
       navigator.userAgent,
       navigator.language,
       screen.width + 'x' + screen.height,
+      screen.colorDepth,
       new Date().getTimezoneOffset(),
       canvas.toDataURL(),
+      navigator.hardwareConcurrency || 'unknown',
+      navigator.platform,
     ];
 
     const str = components.join('|');
@@ -622,7 +797,7 @@ const polls = {
       hash = hash & hash;
     }
 
-    return Math.abs(hash).toString(16);
+    return 'fp_' + Math.abs(hash).toString(16);
   },
 
   /**
@@ -751,6 +926,27 @@ const createPoll = {
    */
   init() {
     this.setupAddOptionButton();
+    this.setupInitialRemoveButtons();
+  },
+
+  /**
+   * Setup remove handlers for initial option buttons
+   */
+  setupInitialRemoveButtons() {
+    const optionsContainer = ui.$('poll-options');
+    const removeButtons = optionsContainer.querySelectorAll('.btn-remove');
+
+    removeButtons.forEach((removeBtn) => {
+      removeBtn.addEventListener('click', () => {
+        const currentCount = optionsContainer.querySelectorAll('.option-input').length;
+        if (currentCount > 2) {
+          removeBtn.closest('.option-input').remove();
+          this.updatePlaceholders();
+        } else {
+          toast.warning('Minimum 2 options required');
+        }
+      });
+    });
   },
 
   /**
@@ -835,11 +1031,16 @@ const createPoll = {
       optionsContainer.innerHTML = `
         <div class="option-input">
           <input type="text" name="options[]" required maxlength="100" placeholder="Option 1">
+          <button type="button" class="btn-remove" aria-label="Remove option">&times;</button>
         </div>
         <div class="option-input">
           <input type="text" name="options[]" required maxlength="100" placeholder="Option 2">
+          <button type="button" class="btn-remove" aria-label="Remove option">&times;</button>
         </div>
       `;
+
+      // Re-setup remove handlers for reset options
+      this.setupInitialRemoveButtons();
 
       // Navigate to the new poll
       const newPollId = response.data.id;

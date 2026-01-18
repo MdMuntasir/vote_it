@@ -513,6 +513,49 @@ body {
   border-radius: 50%;
 }
 
+/* User voted option */
+.poll-option.user-vote {
+  border-color: var(--color-success);
+  background-color: rgb(16 185 129 / 0.1);
+}
+
+.poll-option.user-vote .poll-option-radio {
+  border-color: var(--color-success);
+  background-color: var(--color-success);
+}
+
+.poll-option.user-vote .poll-option-bar-fill {
+  background: var(--color-success);
+}
+
+.poll-option-radio .checkmark {
+  color: white;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.poll-option-radio .checkmark::before {
+  content: '\2713';
+}
+
+.your-vote-badge {
+  display: inline-block;
+  background: var(--color-success);
+  color: white;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.voted-message {
+  font-size: 0.875rem;
+  color: var(--color-success);
+  font-weight: 500;
+}
+
 .poll-option-content {
   flex: 1;
   min-width: 0;

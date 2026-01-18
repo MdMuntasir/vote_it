@@ -156,9 +156,11 @@
               <div id="poll-options" class="poll-options">
                 <div class="option-input">
                   <input type="text" name="options[]" required maxlength="100" placeholder="Option 1">
+                  <button type="button" class="btn-remove" aria-label="Remove option">&times;</button>
                 </div>
                 <div class="option-input">
                   <input type="text" name="options[]" required maxlength="100" placeholder="Option 2">
+                  <button type="button" class="btn-remove" aria-label="Remove option">&times;</button>
                 </div>
               </div>
               <button type="button" id="btn-add-option" class="btn btn-secondary btn-small">+ Add Option</button>
@@ -190,6 +192,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="app.js" type="module"></script>
+  <!-- FingerprintJS for browser fingerprinting -->
+  <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
