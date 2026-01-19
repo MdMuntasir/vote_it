@@ -679,6 +679,67 @@ body {
   margin-left: 0.5rem;
 }
 
+/* Poll Card Statistics */
+.poll-card-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin-bottom: 1rem;
+}
+
+.poll-card-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.poll-card-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.poll-card-stat-label {
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.poll-card-stat-value {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.poll-card-stat-bar {
+  height: 6px;
+  background: var(--color-background);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.poll-card-stat-bar-fill {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease-out;
+  min-width: 0;
+}
+
+.poll-card-more {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+  padding-top: 0.25rem;
+}
+
 /* ============================================
    Poll Detail View
    ============================================ */

@@ -1,5 +1,5 @@
 import { jsonResponse, errorResponse, notFound } from '../utils/response';
-import { getAllPolls, getPollWithOptions, createPoll, getPollsByUserId, getPollById, updatePoll as updatePollDb, deletePoll as deletePollDb } from '../utils/db';
+import { getAllPollsWithOptions, getPollWithOptions, createPoll, getPollsByUserIdWithOptions, getPollById, updatePoll as updatePollDb, deletePoll as deletePollDb } from '../utils/db';
 import type { CreatePollInput, PollWithOptions, UpdatePollInput } from '../types';
 import type { Env } from '../index';
 
@@ -54,7 +54,7 @@ async function getLiveVoteCounts(
 }
 
 export async function handleGetPolls(db: D1Database): Promise<Response> {
-  const polls = await getAllPolls(db);
+  const polls = await getAllPollsWithOptions(db);
   return jsonResponse({ data: polls });
 }
 
@@ -151,7 +151,7 @@ export async function handleGetUserPolls(
   db: D1Database,
   userId: string
 ): Promise<Response> {
-  const polls = await getPollsByUserId(db, userId);
+  const polls = await getPollsByUserIdWithOptions(db, userId);
   return jsonResponse({ data: polls });
 }
 

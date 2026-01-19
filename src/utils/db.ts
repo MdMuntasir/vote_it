@@ -15,6 +15,36 @@ export async function getAllPolls(db: D1Database): Promise<PollRow[]> {
   return result.results;
 }
 
+export async function getAllPollsWithOptions(db: D1Database): Promise<PollWithOptions[]> {
+  const polls = await getAllPolls(db);
+
+  if (polls.length === 0) {
+    return [];
+  }
+
+  // Get all options for all polls in one query
+  const pollIds = polls.map(p => p.id);
+  const placeholders = pollIds.map(() => '?').join(',');
+  const options = await db
+    .prepare(`SELECT * FROM options WHERE poll_id IN (${placeholders}) ORDER BY id`)
+    .bind(...pollIds)
+    .all<OptionRow>();
+
+  // Group options by poll_id
+  const optionsByPollId = new Map<string, OptionRow[]>();
+  for (const option of options.results) {
+    const existing = optionsByPollId.get(option.poll_id) || [];
+    existing.push(option);
+    optionsByPollId.set(option.poll_id, existing);
+  }
+
+  // Combine polls with their options
+  return polls.map(poll => ({
+    ...poll,
+    options: optionsByPollId.get(poll.id) || [],
+  }));
+}
+
 export async function getPollById(
   db: D1Database,
   pollId: string
@@ -131,6 +161,39 @@ export async function getPollsByUserId(
     .bind(userId)
     .all<PollRow>();
   return result.results;
+}
+
+export async function getPollsByUserIdWithOptions(
+  db: D1Database,
+  userId: string
+): Promise<PollWithOptions[]> {
+  const polls = await getPollsByUserId(db, userId);
+
+  if (polls.length === 0) {
+    return [];
+  }
+
+  // Get all options for user's polls in one query
+  const pollIds = polls.map(p => p.id);
+  const placeholders = pollIds.map(() => '?').join(',');
+  const options = await db
+    .prepare(`SELECT * FROM options WHERE poll_id IN (${placeholders}) ORDER BY id`)
+    .bind(...pollIds)
+    .all<OptionRow>();
+
+  // Group options by poll_id
+  const optionsByPollId = new Map<string, OptionRow[]>();
+  for (const option of options.results) {
+    const existing = optionsByPollId.get(option.poll_id) || [];
+    existing.push(option);
+    optionsByPollId.set(option.poll_id, existing);
+  }
+
+  // Combine polls with their options
+  return polls.map(poll => ({
+    ...poll,
+    options: optionsByPollId.get(poll.id) || [],
+  }));
 }
 
 // Update poll title and description

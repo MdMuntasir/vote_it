@@ -571,6 +571,11 @@ const polls = {
     const date = new Date(poll.created_at * 1000).toLocaleDateString();
     const isOwner = state.user && poll.user_id === state.user.id;
     const shouldShowActions = showActions || isOwner;
+    const totalVotes = poll.total_votes || 0;
+
+    // Sort options by vote count (descending) and take top options for display
+    const sortedOptions = [...(poll.options || [])].sort((a, b) => b.vote_count - a.vote_count);
+    const displayOptions = sortedOptions.slice(0, 4); // Show top 4 options
 
     return `
       <article class="poll-card" data-poll-id="${poll.id}">
@@ -581,6 +586,23 @@ const polls = {
           </h3>
           ${poll.description ? `<p class="poll-card-description">${this.escapeHtml(poll.description)}</p>` : ''}
         </div>
+        <div class="poll-card-stats">
+          ${displayOptions.map((option) => {
+            const percentage = totalVotes > 0 ? Math.round((option.vote_count / totalVotes) * 100) : 0;
+            return `
+              <div class="poll-card-stat-item">
+                <div class="poll-card-stat-header">
+                  <span class="poll-card-stat-label">${this.escapeHtml(option.text)}</span>
+                  <span class="poll-card-stat-value">${percentage}%</span>
+                </div>
+                <div class="poll-card-stat-bar">
+                  <div class="poll-card-stat-bar-fill" style="width: ${percentage}%"></div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+          ${sortedOptions.length > 4 ? `<div class="poll-card-more">+${sortedOptions.length - 4} more options</div>` : ''}
+        </div>
         <div class="poll-card-footer">
           <div class="poll-card-meta">
             <span class="poll-card-votes">
@@ -588,7 +610,7 @@ const polls = {
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                 <polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
-              ${poll.total_votes} votes
+              ${totalVotes} votes
             </span>
             <span class="poll-card-date">${date}</span>
           </div>
