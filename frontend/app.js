@@ -35,6 +35,62 @@ const state = {
   currentTab: 'all',
   authInitialized: false,
   pollToDelete: null,
+  theme: 'light',
+};
+
+// =============================================================================
+// Theme Module
+// =============================================================================
+
+const theme = {
+  STORAGE_KEY: 'vote_system_theme',
+
+  init() {
+    // Check for saved theme preference or system preference
+    const savedTheme = localStorage.getItem(this.STORAGE_KEY);
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme) {
+      state.theme = savedTheme;
+    } else if (systemPrefersDark) {
+      state.theme = 'dark';
+    } else {
+      state.theme = 'light';
+    }
+
+    this.apply(state.theme);
+    this.setupToggle();
+    this.watchSystemPreference();
+  },
+
+  apply(themeName) {
+    document.documentElement.setAttribute('data-theme', themeName);
+    state.theme = themeName;
+    localStorage.setItem(this.STORAGE_KEY, themeName);
+  },
+
+  toggle() {
+    const newTheme = state.theme === 'light' ? 'dark' : 'light';
+    this.apply(newTheme);
+  },
+
+  setupToggle() {
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => this.toggle());
+    }
+  },
+
+  watchSystemPreference() {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', (e) => {
+      // Only auto-switch if user hasn't manually set a preference
+      const savedTheme = localStorage.getItem(this.STORAGE_KEY);
+      if (!savedTheme) {
+        this.apply(e.matches ? 'dark' : 'light');
+      }
+    });
+  },
 };
 
 // =============================================================================
@@ -1272,6 +1328,7 @@ async function init() {
   console.log('VoteHub initializing...');
 
   // Initialize modules
+  theme.init();
   toast.init();
   firebaseAuth.init();
   createPoll.init();
