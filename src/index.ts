@@ -1,6 +1,6 @@
 import { createRoute, matchRoute } from './router';
 import { jsonResponse, errorResponse, notFound, corsHeaders } from './utils/response';
-import { handleGetPolls, handleGetPollById, handleCreatePoll } from './handlers/polls';
+import { handleGetPolls, handleGetPollById, handleCreatePoll, handleGetUserPolls, handleUpdatePoll, handleDeletePoll } from './handlers/polls';
 import { handleVote } from './handlers/votes';
 import { handleGoogleAuth } from './handlers/auth';
 import { authenticate } from './middleware/auth';
@@ -20,8 +20,11 @@ const routes = {
   googleAuth: createRoute('POST', '/api/auth/google'),
   // Poll routes
   getPolls: createRoute('GET', '/api/polls'),
+  getUserPolls: createRoute('GET', '/api/polls/me'),
   getPollById: createRoute('GET', '/api/polls/:id'),
   createPoll: createRoute('POST', '/api/polls'),
+  updatePoll: createRoute('PUT', '/api/polls/:id'),
+  deletePoll: createRoute('DELETE', '/api/polls/:id'),
   vote: createRoute('POST', '/api/polls/:id/vote'),
 };
 
@@ -56,6 +59,16 @@ export default {
         return await handleGoogleAuth(env.DB, request, env.FIREBASE_PROJECT_ID);
       }
 
+      // GET /api/polls/me - Get user's polls (requires authentication)
+      match = matchRoute(routes.getUserPolls, method, path);
+      if (match) {
+        const authResult = await authenticate(request, env.DB, env.FIREBASE_PROJECT_ID);
+        if (!authResult.authenticated) {
+          return authResult.response;
+        }
+        return await handleGetUserPolls(env.DB, authResult.user.id);
+      }
+
       // GET /api/polls - List all polls (public)
       match = matchRoute(routes.getPolls, method, path);
       if (match) {
@@ -70,6 +83,26 @@ export default {
           return authResult.response;
         }
         return await handleCreatePoll(env, request, authResult.user.id);
+      }
+
+      // PUT /api/polls/:id - Update a poll (requires authentication + ownership)
+      match = matchRoute(routes.updatePoll, method, path);
+      if (match) {
+        const authResult = await authenticate(request, env.DB, env.FIREBASE_PROJECT_ID);
+        if (!authResult.authenticated) {
+          return authResult.response;
+        }
+        return await handleUpdatePoll(env, request, match.params.id, authResult.user.id);
+      }
+
+      // DELETE /api/polls/:id - Delete a poll (requires authentication + ownership)
+      match = matchRoute(routes.deletePoll, method, path);
+      if (match) {
+        const authResult = await authenticate(request, env.DB, env.FIREBASE_PROJECT_ID);
+        if (!authResult.authenticated) {
+          return authResult.response;
+        }
+        return await handleDeletePoll(env, match.params.id, authResult.user.id);
       }
 
       // POST /api/polls/:id/vote - Submit a vote (public, but tracked)

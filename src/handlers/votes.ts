@@ -58,6 +58,7 @@ async function initializeVoteEngine(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'init',
+      pollId,
       options: options.map((o) => ({
         id: o.id,
         text: o.text,
@@ -132,6 +133,7 @@ export async function handleVote(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'vote',
+      pollId,
       optionId: body.option_id,
       ipAddress,
       fingerprint,

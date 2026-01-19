@@ -121,6 +121,44 @@ export async function checkDuplicateVote(
   return existing !== null;
 }
 
+// Get polls by user ID
+export async function getPollsByUserId(
+  db: D1Database,
+  userId: string
+): Promise<PollRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM polls WHERE user_id = ? ORDER BY created_at DESC')
+    .bind(userId)
+    .all<PollRow>();
+  return result.results;
+}
+
+// Update poll title and description
+export async function updatePoll(
+  db: D1Database,
+  pollId: string,
+  title: string,
+  description: string | null
+): Promise<void> {
+  await db
+    .prepare('UPDATE polls SET title = ?, description = ? WHERE id = ?')
+    .bind(title, description, pollId)
+    .run();
+}
+
+// Delete poll and all related data (cascade)
+export async function deletePoll(
+  db: D1Database,
+  pollId: string
+): Promise<void> {
+  // Delete in order: votes -> options -> poll
+  await db.batch([
+    db.prepare('DELETE FROM votes WHERE poll_id = ?').bind(pollId),
+    db.prepare('DELETE FROM options WHERE poll_id = ?').bind(pollId),
+    db.prepare('DELETE FROM polls WHERE id = ?').bind(pollId),
+  ]);
+}
+
 // Cast a vote and update counters atomically
 export async function castVote(
   db: D1Database,

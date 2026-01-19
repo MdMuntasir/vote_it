@@ -1,6 +1,6 @@
 import { jsonResponse, errorResponse, notFound } from '../utils/response';
-import { getAllPolls, getPollWithOptions, createPoll } from '../utils/db';
-import type { CreatePollInput, PollWithOptions } from '../types';
+import { getAllPolls, getPollWithOptions, createPoll, getPollsByUserId, getPollById, updatePoll as updatePollDb, deletePoll as deletePollDb } from '../utils/db';
+import type { CreatePollInput, PollWithOptions, UpdatePollInput } from '../types';
 import type { Env } from '../index';
 
 interface DOStateResponse {
@@ -129,6 +129,7 @@ export async function handleCreatePoll(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'init',
+        pollId: poll.id,
         options: poll.options.map((o) => ({
           id: o.id,
           text: o.text,
@@ -144,4 +145,76 @@ export async function handleCreatePoll(
   }
 
   return jsonResponse({ data: poll }, 201);
+}
+
+export async function handleGetUserPolls(
+  db: D1Database,
+  userId: string
+): Promise<Response> {
+  const polls = await getPollsByUserId(db, userId);
+  return jsonResponse({ data: polls });
+}
+
+export async function handleUpdatePoll(
+  env: Env,
+  request: Request,
+  pollId: string,
+  userId: string
+): Promise<Response> {
+  // Check if poll exists
+  const poll = await getPollById(env.DB, pollId);
+  if (!poll) {
+    return notFound('Poll not found');
+  }
+
+  // Check ownership
+  if (poll.user_id !== userId) {
+    return errorResponse('You can only edit your own polls', 403);
+  }
+
+  let body: UpdatePollInput;
+  try {
+    body = await request.json() as UpdatePollInput;
+  } catch {
+    return errorResponse('Invalid JSON body');
+  }
+
+  // Validate required fields
+  if (!body.title || typeof body.title !== 'string') {
+    return errorResponse('Title is required and must be a string');
+  }
+
+  const title = body.title.trim();
+  const description = body.description?.trim() || null;
+
+  if (title.length === 0) {
+    return errorResponse('Title cannot be empty');
+  }
+
+  await updatePollDb(env.DB, pollId, title, description);
+
+  // Return updated poll
+  const updatedPoll = await getPollWithOptions(env.DB, pollId);
+  return jsonResponse({ data: updatedPoll });
+}
+
+export async function handleDeletePoll(
+  env: Env,
+  pollId: string,
+  userId: string
+): Promise<Response> {
+  // Check if poll exists
+  const poll = await getPollById(env.DB, pollId);
+  if (!poll) {
+    return notFound('Poll not found');
+  }
+
+  // Check ownership
+  if (poll.user_id !== userId) {
+    return errorResponse('You can only delete your own polls', 403);
+  }
+
+  await deletePollDb(env.DB, pollId);
+
+  return jsonResponse({ data: { success: true, message: 'Poll deleted successfully' } });
 }

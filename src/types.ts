@@ -43,6 +43,11 @@ export interface CreatePollInput {
   options: string[];
 }
 
+export interface UpdatePollInput {
+  title: string;
+  description?: string;
+}
+
 export interface ApiError {
   error: string;
   details?: string;

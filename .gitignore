@@ -18,3 +18,7 @@ Thumbs.db
 
 # Build output
 dist/
+
+.env
+frontend/env.js
+wrangler.toml

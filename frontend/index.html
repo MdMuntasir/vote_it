@@ -3,37 +3,85 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Create and vote on polls">
-  <title>Vote System</title>
+  <meta name="description" content="Create and vote on polls - A modern polling platform">
+  <title>VoteHub - Create & Share Polls</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
   <!-- Header with Navigation -->
   <header class="header">
     <div class="container header-content">
-      <a href="/" class="logo">Vote System</a>
+      <a href="/" class="logo">
+        <span class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4"/>
+            <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.12 0 4.07.74 5.61 1.97"/>
+          </svg>
+        </span>
+        VoteHub
+      </a>
       <nav class="nav">
-        <button id="nav-home" class="nav-link active">Polls</button>
-        <div id="auth-nav" class="auth-nav">
-          <!-- Shown when logged out -->
-          <button id="btn-google-signin" class="btn btn-google">
-            <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        <div class="nav-tabs" id="nav-tabs">
+          <button id="nav-all-polls" class="nav-tab active" data-tab="all">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
             </svg>
-            Sign in with Google
+            All Polls
+          </button>
+          <button id="nav-my-polls" class="nav-tab hidden" data-tab="my">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            My Polls
           </button>
         </div>
-        <div id="user-nav" class="user-nav hidden">
-          <!-- Shown when logged in -->
-          <button id="btn-create-poll" class="btn btn-primary">Create Poll</button>
-          <div class="user-profile">
-            <img id="user-photo" class="user-photo" src="" alt="Profile">
-            <span id="user-name" class="user-name"></span>
+        <div class="nav-actions">
+          <div id="auth-nav" class="auth-nav">
+            <button id="btn-google-signin" class="btn btn-signin">
+              <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Sign in with Google
+            </button>
           </div>
-          <button id="btn-logout" class="btn btn-secondary">Logout</button>
+          <div id="user-nav" class="user-nav hidden">
+            <button id="btn-create-poll" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Create Poll
+            </button>
+            <div class="user-menu">
+              <button id="user-menu-btn" class="user-menu-btn">
+                <img id="user-photo" class="user-photo" src="" alt="Profile">
+                <span id="user-name" class="user-name"></span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              <div id="user-dropdown" class="user-dropdown hidden">
+                <button id="btn-logout" class="dropdown-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </nav>
     </div>
@@ -42,11 +90,29 @@
   <!-- Main Content -->
   <main class="main">
     <div class="container">
+      <!-- Hero Section -->
+      <section id="hero-section" class="hero">
+        <div class="hero-content">
+          <h1 class="hero-title">Create polls,<br><span class="gradient-text">gather opinions</span></h1>
+          <p class="hero-subtitle">The simplest way to create polls and get instant feedback from your community.</p>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-card">
+            <span class="stat-number" id="stat-polls">0</span>
+            <span class="stat-label">Active Polls</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-number" id="stat-votes">0</span>
+            <span class="stat-label">Total Votes</span>
+          </div>
+        </div>
+      </section>
+
       <!-- Poll Dashboard Section -->
       <section id="poll-dashboard" class="section">
         <div class="section-header">
-          <h1>Polls</h1>
-          <p class="section-subtitle">Browse and vote on community polls</p>
+          <h2 id="section-title">All Polls</h2>
+          <p id="section-subtitle" class="section-subtitle">Browse and vote on community polls</p>
         </div>
 
         <!-- Loading State -->
@@ -57,22 +123,42 @@
 
         <!-- Empty State -->
         <div id="polls-empty" class="empty-state hidden">
-          <p>No polls yet. Be the first to create one!</p>
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+          </div>
+          <h3>No polls yet</h3>
+          <p>Be the first to create a poll and start gathering opinions!</p>
         </div>
 
         <!-- Error State -->
         <div id="polls-error" class="error-state hidden">
+          <div class="error-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h3>Something went wrong</h3>
           <p>Failed to load polls. Please try again.</p>
-          <button id="btn-retry-polls" class="btn btn-secondary">Retry</button>
+          <button id="btn-retry-polls" class="btn btn-secondary">Try Again</button>
         </div>
 
         <!-- Poll List -->
-        <div id="poll-list" class="poll-list hidden"></div>
+        <div id="poll-list" class="poll-grid hidden"></div>
       </section>
 
       <!-- Single Poll View Section -->
       <section id="poll-view" class="section hidden">
-        <button id="btn-back-to-polls" class="btn btn-text">&larr; Back to Polls</button>
+        <button id="btn-back-to-polls" class="btn btn-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Back to Polls
+        </button>
 
         <div id="poll-view-loading" class="loading">
           <div class="spinner"></div>
@@ -82,45 +168,160 @@
         <div id="poll-view-content" class="poll-detail hidden"></div>
 
         <div id="poll-view-error" class="error-state hidden">
-          <p>Failed to load poll. Please try again.</p>
-          <button id="btn-retry-poll" class="btn btn-secondary">Retry</button>
+          <div class="error-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h3>Poll not found</h3>
+          <p>This poll may have been deleted or doesn't exist.</p>
+          <button id="btn-retry-poll" class="btn btn-secondary">Try Again</button>
         </div>
       </section>
 
       <!-- Create Poll Form Section -->
       <section id="create-poll-section" class="section hidden">
+        <button id="btn-back-from-create" class="btn btn-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Back to Polls
+        </button>
+
         <div class="form-card">
-          <h2>Create a New Poll</h2>
+          <div class="form-header">
+            <h2>Create a New Poll</h2>
+            <p>Ask a question and add options for people to vote on</p>
+          </div>
           <form id="create-poll-form" class="form">
             <div class="form-group">
-              <label for="poll-title">Question / Title</label>
+              <label for="poll-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Question
+              </label>
               <input type="text" id="poll-title" name="title" required maxlength="200" placeholder="What do you want to ask?">
             </div>
             <div class="form-group">
-              <label for="poll-description">Description (optional)</label>
+              <label for="poll-description">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="17" y1="10" x2="3" y2="10"/>
+                  <line x1="21" y1="6" x2="3" y2="6"/>
+                  <line x1="21" y1="14" x2="3" y2="14"/>
+                  <line x1="17" y1="18" x2="3" y2="18"/>
+                </svg>
+                Description <span class="optional">(optional)</span>
+              </label>
               <textarea id="poll-description" name="description" rows="3" maxlength="500" placeholder="Add more context to your poll..."></textarea>
             </div>
             <div class="form-group">
-              <label>Options</label>
+              <label>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="9 11 12 14 22 4"/>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                Options
+              </label>
               <div id="poll-options" class="poll-options">
                 <div class="option-input">
-                  <input type="text" name="options[]" required maxlength="100" placeholder="Option 1">
-                  <button type="button" class="btn-remove" aria-label="Remove option">&times;</button>
+                  <span class="option-number">1</span>
+                  <input type="text" name="options[]" required maxlength="100" placeholder="Enter option">
+                  <button type="button" class="btn-remove" aria-label="Remove option">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
                 </div>
                 <div class="option-input">
-                  <input type="text" name="options[]" required maxlength="100" placeholder="Option 2">
-                  <button type="button" class="btn-remove" aria-label="Remove option">&times;</button>
+                  <span class="option-number">2</span>
+                  <input type="text" name="options[]" required maxlength="100" placeholder="Enter option">
+                  <button type="button" class="btn-remove" aria-label="Remove option">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
-              <button type="button" id="btn-add-option" class="btn btn-secondary btn-small">+ Add Option</button>
+              <button type="button" id="btn-add-option" class="btn btn-add-option">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Option
+              </button>
             </div>
             <div id="create-poll-error" class="form-error hidden"></div>
             <div class="form-actions">
               <button type="button" id="btn-cancel-create" class="btn btn-secondary">Cancel</button>
-              <button type="submit" class="btn btn-primary">
+              <button type="submit" class="btn btn-primary btn-submit">
                 <span class="btn-text">Create Poll</span>
                 <span class="btn-loading hidden">
-                  <span class="spinner-small"></span> Creating...
+                  <span class="spinner-small"></span>
+                  Creating...
+                </span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Edit Poll Section -->
+      <section id="edit-poll-section" class="section hidden">
+        <button id="btn-back-from-edit" class="btn btn-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Back to Poll
+        </button>
+
+        <div class="form-card">
+          <div class="form-header">
+            <h2>Edit Poll</h2>
+            <p>Update your poll's question and description</p>
+          </div>
+          <form id="edit-poll-form" class="form">
+            <input type="hidden" id="edit-poll-id" name="pollId">
+            <div class="form-group">
+              <label for="edit-poll-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Question
+              </label>
+              <input type="text" id="edit-poll-title" name="title" required maxlength="200" placeholder="What do you want to ask?">
+            </div>
+            <div class="form-group">
+              <label for="edit-poll-description">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="17" y1="10" x2="3" y2="10"/>
+                  <line x1="21" y1="6" x2="3" y2="6"/>
+                  <line x1="21" y1="14" x2="3" y2="14"/>
+                  <line x1="17" y1="18" x2="3" y2="18"/>
+                </svg>
+                Description <span class="optional">(optional)</span>
+              </label>
+              <textarea id="edit-poll-description" name="description" rows="3" maxlength="500" placeholder="Add more context to your poll..."></textarea>
+            </div>
+            <p class="form-note">Note: You cannot edit poll options after creation to maintain vote integrity.</p>
+            <div id="edit-poll-error" class="form-error hidden"></div>
+            <div class="form-actions">
+              <button type="button" id="btn-cancel-edit" class="btn btn-secondary">Cancel</button>
+              <button type="submit" class="btn btn-primary btn-submit">
+                <span class="btn-text">Save Changes</span>
+                <span class="btn-loading hidden">
+                  <span class="spinner-small"></span>
+                  Saving...
                 </span>
               </button>
             </div>
@@ -130,23 +331,40 @@
     </div>
   </main>
 
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="container">
-      <p>Vote System &copy; 2024</p>
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-icon danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          <line x1="10" y1="11" x2="10" y2="17"/>
+          <line x1="14" y1="11" x2="14" y2="17"/>
+        </svg>
+      </div>
+      <h3>Delete Poll</h3>
+      <p>Are you sure you want to delete this poll? This action cannot be undone and all votes will be permanently lost.</p>
+      <div class="modal-actions">
+        <button id="btn-cancel-delete" class="btn btn-secondary">Cancel</button>
+        <button id="btn-confirm-delete" class="btn btn-danger">
+          <span class="btn-text">Delete Poll</span>
+          <span class="btn-loading hidden">
+            <span class="spinner-small"></span>
+            Deleting...
+          </span>
+        </button>
+      </div>
     </div>
-  </footer>
+  </div>
 
   <!-- Toast Notifications Container -->
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts -->
-  <!-- Environment Configuration (injected by Cloudflare Pages or local dev) -->
   <script src="env.js"></script>
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <!-- FingerprintJS for browser fingerprinting -->
   <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js"></script>
   <script src="app.js"></script>
 </body>

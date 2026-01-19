@@ -19,6 +19,7 @@ interface VoteState {
 
 interface VoteRequest {
   action: 'vote' | 'getState' | 'init' | 'sync';
+  pollId?: string;
   optionId?: string;
   ipAddress?: string;
   fingerprint?: string;
@@ -200,9 +201,11 @@ export class VoteEngine implements DurableObject {
       return { success: true, data: { totalVotes: this.voteState.totalVotes } };
     }
 
-    const pollId = new URL('http://dummy/' + this.state.id.toString()).pathname.slice(1);
+    if (!body.pollId) {
+      return { success: false, error: 'pollId is required for initialization' };
+    }
 
-    this.voteState.pollId = pollId;
+    this.voteState.pollId = body.pollId;
     this.voteState.totalVotes = body.totalVotes || 0;
     this.voteState.initialized = true;
 
@@ -232,6 +235,15 @@ export class VoteEngine implements DurableObject {
   private async handleVote(body: VoteRequest): Promise<VoteResponse> {
     if (!body.optionId || !body.ipAddress || !body.fingerprint) {
       return { success: false, error: 'Missing required fields' };
+    }
+
+    // Ensure pollId is set (use from request if state doesn't have it)
+    if (!this.voteState.pollId && body.pollId) {
+      this.voteState.pollId = body.pollId;
+    }
+
+    if (!this.voteState.pollId) {
+      return { success: false, error: 'Poll ID not set - DO not initialized' };
     }
 
     // Check for duplicate vote

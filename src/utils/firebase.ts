@@ -100,10 +100,13 @@ function extractPublicKeyFromCert(certDer: Uint8Array): ArrayBuffer {
   let offset = 0;
 
   // Skip outer SEQUENCE tag and length
-  offset += getAsn1Length(certDer, offset).offset;
+  if (certDer[offset] !== 0x30) throw new Error('Invalid certificate format: expected outer SEQUENCE');
+  offset++;
+  const outerLength = getAsn1Length(certDer, offset);
+  offset = outerLength.offset;
 
   // Skip tbsCertificate SEQUENCE tag
-  if (certDer[offset] !== 0x30) throw new Error('Invalid certificate format');
+  if (certDer[offset] !== 0x30) throw new Error('Invalid certificate format: expected tbsCertificate SEQUENCE');
   offset++;
   const tbsLength = getAsn1Length(certDer, offset);
   offset = tbsLength.offset;
