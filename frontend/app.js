@@ -354,12 +354,9 @@ const ui = {
 
   updateStats(pollsData) {
     const statPolls = this.$('stat-polls');
-    const statVotes = this.$('stat-votes');
 
-    if (statPolls && statVotes) {
+    if (statPolls) {
       statPolls.textContent = pollsData.length;
-      const totalVotes = pollsData.reduce((sum, poll) => sum + (poll.total_votes || 0), 0);
-      statVotes.textContent = totalVotes;
     }
   },
 
