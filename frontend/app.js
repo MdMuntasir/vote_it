@@ -39,6 +39,55 @@ const state = {
 };
 
 // =============================================================================
+// Router Module (Hash-based routing for shareable poll links)
+// =============================================================================
+
+const router = {
+  init() {
+    // Handle initial URL on page load
+    window.addEventListener('hashchange', () => this.handleRoute());
+  },
+
+  handleRoute() {
+    const hash = window.location.hash;
+
+    // Check for poll route: #poll/{pollId}
+    const pollMatch = hash.match(/^#poll\/([a-zA-Z0-9_-]+)$/);
+
+    if (pollMatch) {
+      const pollId = pollMatch[1];
+      polls.loadPollDetail(pollId);
+    }
+  },
+
+  // Check initial route after app initializes
+  checkInitialRoute() {
+    const hash = window.location.hash;
+    if (hash.startsWith('#poll/')) {
+      this.handleRoute();
+      return true;
+    }
+    return false;
+  },
+
+  // Update URL when viewing a poll
+  navigateToPoll(pollId) {
+    window.history.pushState(null, '', `#poll/${pollId}`);
+  },
+
+  // Clear poll from URL when going back to dashboard
+  navigateToDashboard() {
+    window.history.pushState(null, '', window.location.pathname);
+  },
+
+  // Get the shareable URL for a poll
+  getPollUrl(pollId) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    return `${baseUrl}#poll/${pollId}`;
+  },
+};
+
+// =============================================================================
 // Theme Module
 // =============================================================================
 
@@ -618,6 +667,15 @@ const polls = {
         deleteModal.show(pollId);
       });
     });
+
+    // Add share button handlers
+    container.querySelectorAll('.poll-card-action.share').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pollId = btn.closest('.poll-card').dataset.pollId;
+        this.copyPollUrl(pollId);
+      });
+    });
   },
 
   createPollCard(poll, showActions = false) {
@@ -667,8 +725,17 @@ const polls = {
             </span>
             <span class="poll-card-date">${date}</span>
           </div>
-          ${shouldShowActions ? `
-            <div class="poll-card-actions">
+          <div class="poll-card-actions">
+            <button class="poll-card-action share" title="Copy link to share">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"/>
+                <circle cx="6" cy="12" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+            </button>
+            ${shouldShowActions ? `
               <button class="poll-card-action edit" title="Edit poll">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -681,8 +748,8 @@ const polls = {
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                 </svg>
               </button>
-            </div>
-          ` : ''}
+            ` : ''}
+          </div>
         </div>
       </article>
     `;
@@ -698,6 +765,9 @@ const polls = {
       this.renderPollDetail(state.currentPoll);
       ui.$('poll-view-content').classList.remove('hidden');
       ui.hideLoading('poll-view');
+
+      // Update URL for sharing
+      router.navigateToPoll(pollId);
     } catch (error) {
       console.error('Failed to load poll:', error);
       ui.showError('poll-view');
@@ -715,8 +785,18 @@ const polls = {
       <div class="poll-detail">
         <div class="poll-detail-header">
           <h1 class="poll-detail-title">${this.escapeHtml(poll.title)}</h1>
-          ${isOwner ? `
-            <div class="poll-detail-actions">
+          <div class="poll-detail-actions">
+            <button class="poll-detail-action share" id="btn-share-poll" title="Copy link to share">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"/>
+                <circle cx="6" cy="12" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              Share
+            </button>
+            ${isOwner ? `
               <button class="poll-detail-action" id="btn-edit-poll">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -731,8 +811,8 @@ const polls = {
                 </svg>
                 Delete
               </button>
-            </div>
-          ` : ''}
+            ` : ''}
+          </div>
         </div>
         ${poll.description ? `<p class="poll-detail-description">${this.escapeHtml(poll.description)}</p>` : ''}
 
@@ -766,6 +846,14 @@ const polls = {
       this.setupOptionHandlers();
     }
 
+    // Setup share button handler
+    const shareBtn = document.getElementById('btn-share-poll');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', () => {
+        this.copyPollUrl(poll.id);
+      });
+    }
+
     // Setup edit/delete handlers for owner
     if (isOwner) {
       const editBtn = document.getElementById('btn-edit-poll');
@@ -782,6 +870,30 @@ const polls = {
           deleteModal.show(poll.id);
         });
       }
+    }
+  },
+
+  async copyPollUrl(pollId) {
+    const url = router.getPollUrl(pollId);
+
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied to clipboard!');
+    } catch (error) {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        toast.success('Link copied to clipboard!');
+      } catch (e) {
+        toast.error('Failed to copy link');
+      }
+      document.body.removeChild(textArea);
     }
   },
 
@@ -1287,6 +1399,7 @@ function setupEventHandlers() {
 
   // Back buttons
   ui.$('btn-back-to-polls').addEventListener('click', () => {
+    router.navigateToDashboard();
     ui.showSection('poll-dashboard');
     polls.loadPolls();
   });
@@ -1333,12 +1446,18 @@ async function init() {
   firebaseAuth.init();
   createPoll.init();
   userMenu.init();
+  router.init();
 
   // Setup event handlers
   setupEventHandlers();
 
-  // Load initial data
-  await polls.loadPolls();
+  // Check if there's a poll in the URL to load directly
+  const hasDirectRoute = router.checkInitialRoute();
+
+  // Load poll list if no direct poll route
+  if (!hasDirectRoute) {
+    await polls.loadPolls();
+  }
 
   console.log('VoteHub ready!');
 }
